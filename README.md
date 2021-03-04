@@ -30,7 +30,7 @@ Plan for the summer semester 2020/2021. UoW classes are on Fridays. We will meet
 
 
 * 2021-03-05 -- Introduction
-* 2021-03-12 -- [XAI stories: first meeting, groups are assembles]
+* 2021-03-12 -- [XAI stories: first meeting, groups are assembled]
 * 2021-03-19 -- Break Down / SHAP. [EMA chapter](https://pbiecek.github.io/ema/breakDown.html), [paper shap](http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions), [paper break down](https://arxiv.org/abs/1903.11420)
 * 2021-03-26 -- LIME. [EMA chapter](https://pbiecek.github.io/ema/LIME.html), [paper lime](https://arxiv.org/abs/1602.04938)
 * 2021-03-31 -- Ceteris Paribus profiles / Partial Dependence profiles. [EMA chapter](https://pbiecek.github.io/ema/partialDependenceProfiles.html), [paper pdp/ale](https://cran.r-project.org/web/packages/ALEPlot/vignettes/AccumulatedLocalEffectPlot.pdf)
