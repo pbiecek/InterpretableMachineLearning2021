@@ -1,16 +1,16 @@
 ---
-title: "iml_hw1"
+title: "House Sales in King County"
 author: "Michal_Raszkowski"
 date: "11 03 2021"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = F)
 set.seed(13)
 ```
 
-```{r}
+```{r, include=F}
 library(caret)
 library(glmnet)
 library(randomForest)
@@ -19,7 +19,7 @@ library(ranger)
 
 W ninejszym dokumencie przeprowadzimy predykcję cen nieruchomości na podstawie danych z 'House Sales in King County'.
 
-```{r}
+```{r, echo=T}
 house_data <- read.csv('kc_house_data.csv')
 head(house_data)
 ```
@@ -28,7 +28,7 @@ head(house_data)
 
 Przed próbą predykcji potrzebujemy zmodyfikować lekko dane. Wpierw usuwamy rekordy zerową liczbą łazienek (zaledwie 10 przypadków), podejrzewając że powstały one w wyniku błędu. Następnie dodajemy kolumny z rokiem i dniem w roku kiedy została sprzedana nieruchomość (na podstawie zmiennej 'date'). Dodajemy również wiek posiadłości oraz zmienną opisującą ilość lat które upłynęły od czasu ostatniej renowacji.
 
-```{r}
+```{r, echo=T, include=F}
 #usuwamy rekordy z 0 łazienek
 house_data <- house_data[house_data$bathrooms > 0,]
 
@@ -53,7 +53,7 @@ house_data$sale_year <- as.factor(house_data$sale_year)
 
 Pomijamy część z bazowych zmiennych do predykcji - stworzone wcześniej przez nas nowe zmienne je zastąpią. Dzielimy nasze dane na zbiór treningowy (80%) i testowy(20%).
 
-```{r}
+```{r, echo=T}
 #wybieramy kolumny
 data <- subset(house_data, select = -c(id, date, yr_built, yr_renovated, sqft_living, sale_days))
 
@@ -65,7 +65,7 @@ test_data <- data[-indices,]
 
 ### Zależności między zmiennymi
 
-```{r}
+```{r, include=F}
 panel.cor <- function(x, y){
     usr <- par("usr"); on.exit(par(usr))
     par(usr = c(0, 1, 0, 1))
@@ -123,7 +123,7 @@ for(i in 1:nrow(hyper_grid)) {
 hyper_grid <- hyper_grid[order(hyper_grid$OOB_RMSE),]
 ```
 
-```{r}
+```{r, echo=T}
 finalmodel <- ranger(
     formula         = price ~ ., 
     data            = train_data, 
