@@ -1,6 +1,6 @@
 # Interpretable Machine Learning 2021
 
-Lecture notes for 'Interpretable Machine Learning' at [UoW](https://usosweb.uw.edu.pl/kontroler.php?_action=katalog2/przedmioty/pokazPrzedmiot&kod=1000-1M18WUM). Summer semester 2020/2010
+Lecture notes for 'Interpretable Machine Learning' at [UoW](https://usosweb.uw.edu.pl/kontroler.php?_action=katalog2/przedmioty/pokazPrzedmiot&kod=1000-1M18WUM). Summer semester 2020/2021
 
 Slack for this course: http://iml2021workspace.slack.com
 
