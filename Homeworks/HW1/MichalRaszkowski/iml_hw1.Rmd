@@ -1,0 +1,147 @@
+---
+title: "House Sales in King County"
+author: "Michal_Raszkowski"
+date: "11 03 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+set.seed(13)
+```
+
+```{r, include=F}
+library(caret)
+library(glmnet)
+library(randomForest)
+library(ranger)
+```
+
+W ninejszym dokumencie przeprowadzimy predykcję cen nieruchomości na podstawie danych z 'House Sales in King County'.
+
+```{r, echo=T}
+house_data <- read.csv('kc_house_data.csv')
+head(house_data)
+```
+
+### Przygotowanie danych
+
+Przed próbą predykcji potrzebujemy zmodyfikować lekko dane. Wpierw usuwamy rekordy zerową liczbą łazienek (zaledwie 10 przypadków), podejrzewając że powstały one w wyniku błędu. Następnie dodajemy kolumny z rokiem i dniem w roku kiedy została sprzedana nieruchomość (na podstawie zmiennej 'date'). Dodajemy również wiek posiadłości oraz zmienną opisującą ilość lat które upłynęły od czasu ostatniej renowacji.
+
+```{r, echo=T, include=F}
+#usuwamy rekordy z 0 łazienek
+house_data <- house_data[house_data$bathrooms > 0,]
+
+#dodajemy kolumny
+house_data$sale_year <- as.numeric(unlist(lapply(house_data$date, substr, start=1, stop=4)))
+house_data$sale_days <- as.Date(unlist(lapply(house_data$date, substr, start=5, stop=8)),
+                               format = '%m%d') - as.Date('0101', format='%m%d')
+house_data$sale_days <- as.numeric(house_data$sale_days)
+
+#zachowujemy cykliczność dni
+house_data$day_x <- cos(house_data$sale_days*pi/365)
+house_data$day_y <- sin(house_data$sale_days*pi/365)
+
+house_data$age <- house_data$sale_year - house_data$yr_built
+
+house_data$renovation_age <- house_data$age
+house_data$renovation_age[house_data$yr_renovated > 0] <-
+  house_data$sale_year[house_data$yr_renovated > 0] - house_data$yr_renovated[house_data$yr_renovated > 0]
+
+house_data$sale_year <- as.factor(house_data$sale_year)
+```
+
+Pomijamy część z bazowych zmiennych do predykcji - stworzone wcześniej przez nas nowe zmienne je zastąpią. Dzielimy nasze dane na zbiór treningowy (80%) i testowy(20%).
+
+```{r, echo=T}
+#wybieramy kolumny
+data <- subset(house_data, select = -c(id, date, yr_built, yr_renovated, sqft_living, sale_days))
+
+#dzielimy na zbiór treningowy (80%) i testowy (20%)
+indices <- sample(seq_len(nrow(data)), size = floor(nrow(data)*0.8))
+train_data <- data[indices,]
+test_data <- data[-indices,]
+```
+
+### Zależności między zmiennymi
+
+```{r, include=F}
+panel.cor <- function(x, y){
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- round(cor(x, y), digits=2)
+    txt <- paste0("R = ", r)
+    cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+```
+
+```{r}
+pairs(train_data[,1:6], lower.panel = panel.cor)
+```
+```{r}
+pairs(train_data[,c(1,7:11)], lower.panel = panel.cor)
+```
+
+```{r}
+pairs(train_data[,c(1,12:16)], lower.panel = panel.cor)
+```
+
+```{r}
+pairs(train_data[,c(1,17:21)], lower.panel = panel.cor)
+```
+
+Po spojrzeniu na powyższe wykresy możemy przypuszczać, że regresja liniowa (np. w formie elastic net) może nie zadziałać zbyt dobrze, ze względu na mało liniową zależność. Stąd pomysł zastosowania lasów losowych.
+
+```{r}
+# hyperparameter grid search
+hyper_grid <- expand.grid(
+  mtry       = seq(10, 20, by = 2),
+  node_size  = seq(1, 3, by = 1),
+  sample_size = 0.632,
+  OOB_RMSE   = 0
+)
+
+for(i in 1:nrow(hyper_grid)) {
+  
+  # train model
+  model <- ranger(
+    formula         = price ~ ., 
+    data            = train_data, 
+    num.trees       = 500,
+    mtry            = hyper_grid$mtry[i],
+    min.node.size   = hyper_grid$node_size[i],
+    sample.fraction = hyper_grid$sample_size[i],
+    seed            = 13
+  )
+  
+  # add OOB error to grid
+  hyper_grid$OOB_RMSE[i] <- sqrt(model$prediction.error)
+}
+
+
+hyper_grid <- hyper_grid[order(hyper_grid$OOB_RMSE),]
+```
+
+```{r, echo=T}
+finalmodel <- ranger(
+    formula         = price ~ ., 
+    data            = train_data, 
+    num.trees       = 500,
+    mtry            = hyper_grid$mtry[1],
+    min.node.size   = hyper_grid$node_size[1],
+    sample.fraction = hyper_grid$sample_size[1],
+    seed            = 13
+  )
+
+
+pred <- predict(finalmodel, test_data)
+# Model performance metrics
+data.frame(
+  RMSE = RMSE(pred$predictions, test_data$price),
+  Rsquare = R2(pred$predictions, test_data$price)
+)
+```
+
+Finalnie otrzymaliśmy dość duży błąd średniokwadratowy (na poziomie ok. 31% średniej).
+
