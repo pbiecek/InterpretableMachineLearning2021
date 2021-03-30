@@ -1,0 +1,177 @@
+---
+title: "iml_hw2"
+author: "Michal_Raszkowski"
+date: "26 03 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+set.seed(13)
+```
+
+```{r, include=F}
+library(caret)
+library(glmnet)
+library(randomForest)
+library(ranger)
+library(DALEX)
+```
+
+W ninejszym dokumencie wykorzystamy techniki wyjaśnialności przedstawione na ostatnim wykładzie do analizy modelu z pierwszej pracy domowej. W związku z tym pomijam części związane z przygotowaniem danych i uczeniem modelu lasu losowego.
+
+```{r}
+house_data <- read.csv('kc_house_data.csv')
+```
+
+
+```{r, include=F}
+#usuwamy rekordy z 0 łazienek
+house_data <- house_data[house_data$bathrooms > 0,]
+
+#dodajemy kolumny
+house_data$sale_year <- as.numeric(unlist(lapply(house_data$date, substr, start=1, stop=4)))
+house_data$sale_days <- as.Date(unlist(lapply(house_data$date, substr, start=5, stop=8)),
+                               format = '%m%d') - as.Date('0101', format='%m%d')
+house_data$sale_days <- as.numeric(house_data$sale_days)
+
+#zachowujemy cykliczność dni
+house_data$day_x <- cos(house_data$sale_days*pi/365)
+house_data$day_y <- sin(house_data$sale_days*pi/365)
+
+house_data$age <- house_data$sale_year - house_data$yr_built
+
+house_data$renovation_age <- house_data$age
+house_data$renovation_age[house_data$yr_renovated > 0] <-
+  house_data$sale_year[house_data$yr_renovated > 0] - house_data$yr_renovated[house_data$yr_renovated > 0]
+
+house_data$sale_year <- as.factor(house_data$sale_year)
+```
+
+
+```{r}
+#wybieramy kolumny
+data <- subset(house_data, select = -c(id, date, yr_built, yr_renovated, sqft_living, sale_days))
+
+#dzielimy na zbiór treningowy (80%) i testowy (20%)
+indices <- sample(seq_len(nrow(data)), size = floor(nrow(data)*0.8))
+train_data <- data[indices,]
+test_data <- data[-indices,]
+```
+
+
+```{r, echo=T}
+#trenujemy las losowy z parametrami uzyskanymi w pierwszej pd
+rf <- ranger(
+    formula         = price ~ ., 
+    data            = train_data, 
+    num.trees       = 500,
+    mtry            = 12,
+    min.node.size   = 2,
+    sample.fraction = 0.632,
+    seed            = 13
+  )
+
+```
+
+### Dekompozycja za pomocą metody SHAP
+
+Wybierzmy dwie losowe obserwacje ze zbioru testowego.
+
+```{r}
+df <- test_data[2:3,]
+df$pred_price <- c(0,0)
+df$pred_price[1] <- predict(rf, df[1,])$prediction
+df$pred_price[2] <- predict(rf, df[2,])$prediction
+df[c('price', 'pred_price')]
+```
+
+Różnica pomiędzy predykcją a faktyczną ceną jest stosunkowo niewielka. Zobaczmy jakie czynniki miały największy wpływ na predykcję ceny dla tych dwóch mieszkań.
+
+```{r, include=F}
+explain_ranger <- DALEX::explain(model = rf,  
+                        data = subset(train_data, select=-price),
+                           y = train_data$price, 
+                       label = "Random Forest")
+
+```
+
+```{r}
+bd_rf <- predict_parts(explainer = explain_ranger,
+                 new_observation = df[1,],
+                            type = "shap")
+plot(bd_rf)
+```
+
+Dla pierwszego mieszkania głównym składnikiem podnoszącym przewidywaną cenę jest położenie - szczególnie wybija się kontrybucja zmiennej *lat*. Prawdopodobnie jest to związane z bliskim położeniem względem dogodnej lokalizacji (np. centrum miasta). Na obniżenie ceny w modelu głównie wpływa przeciętny stan i wygląd budynku (*grade*), niska powierzchnia mieszkaniowa oraz (co ciekawe) średnia powierzchnia mieszkaniowa 15 domów w sąsiedztwie. To ostatnie możnaby tłumaczyć mniejszym metrażem względem mieszkań w okolicy, ale hipotezę tę zdaje się obalać następny przykład.
+
+```{r}
+bd_rf2 <- predict_parts(explainer = explain_ranger,
+                 new_observation = test_data[],
+                            type = "shap")
+plot(bd_rf2)
+```
+
+Dla tego mieszkania najbardziej wpływowym czynnikiem jest niska ocena stanu i wyglądu budynku, jak i mały metraż. Wśród znaczących czynników obniżających cenę mamy też ilość łazienek. Interesujące są trzeci i czwarty czynnik pod względem ważności. Pierwszy z nich oznacza wiek budynku i pomimo prawie dwukrotnie wyższej wartości od średniej wpływa on na wzrost ceny w modelu. Drugi zaś to metraż 15 sąsiednich mieszkań - dużo większy niż metraż omawianego mieszkania, a jednak zwiększa predykcję ceny.
+
+### Obserwacja o innych wpływowych parametrach
+
+W poprzednich przykładach ocena stanu i wyglądu budynku oraz metraż miały największy wpływ na predykcję ceny. Spróbujmy znaleźć obserwację dla której te zmienne nie są najważniejsze.
+
+```{r}
+bd_rf3 <- predict_parts(explainer = explain_ranger,
+                 new_observation = test_data['4637',],
+                            type = "shap")
+plot(bd_rf3)
+```
+
+Dla powyższego lokum na cenę najbardziej wpływa położenie, widok oraz wiek budynku. Sugeruje to, że głównym atutem tej nieruchomości jest jego okolica, przez co stan budynku i jego metraż odgrywa tu mniejszą rolę.
+
+### Ta sama wartość, odwrotny wpływ
+
+Ustalając wartość stanu i wyglądu budynku *grade*=8 zobaczymy, że dla jednej obserwacji wpływa ona na wzrost ceny, zaś dla innej ją obniża.
+
+```{r}
+bd_rf4 <- predict_parts(explainer = explain_ranger,
+                 new_observation = test_data['5717',],
+                            type = "shap")
+plot(bd_rf4)
+```
+```{r}
+bd_rf5 <- predict_parts(explainer = explain_ranger,
+                 new_observation = test_data['1685',],
+                            type = "shap")
+plot(bd_rf5)
+```
+
+Zwróćmy przy tym uwagę, że w obu przypadkach zmienna ta nie wywiera największego wpływu na cenę. Wzrost ceny w pierwszym przypadku może wynikać z połaczenia z ładnym widokiem i bliskością do akwenu wodnego, którego w drugim przypadku nie mamy.
+
+### Porównanie z modelem liniowym
+
+Na koniec porównajmy dekompozycję z pierwszego przykładu z dekompozycją tej samej obseracji przy zastosowaniu modelu liniowego z regularyzacją elastic net.
+
+```{r, echo=T}
+elnet <- train(
+  price ~., data = train_data, method = "glmnet",
+  trControl = trainControl("cv", number = 5),
+  tuneLength = 5
+)
+```
+
+```{r, include=F}
+explain_elnet <- DALEX::explain(model = elnet,  
+                        data = subset(train_data, select=-price),
+                           y = train_data$price, 
+                       label = "Elastic net")
+```
+
+```{r}
+bd_elnet <- predict_parts(explainer = explain_elnet,
+                 new_observation = df[1,],
+                            type = "shap")
+plot(bd_elnet)
+```
+
+Dekompozycja znacząco się zmieniła - na pierwsze miejsce wskoczył metraż deklasując zmienną *lat* na 3-cie miejsce. Wzrosło też znaczenie wieku budynku oraz liczby sypialni. Co najciekawsze, kolejność zmiennych w warunkowaniach praktycznie nie ma znaczenia (punktowe znaczniki granatowe) w przeciwieństwie do przykładów z lasem losowym.
+
+
