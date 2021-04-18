@@ -1,0 +1,180 @@
+---
+title: "iml_hw3"
+author: "Michal_Raszkowski"
+date: "7.04.2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+set.seed(13)
+```
+
+```{r, include=F}
+library(caret)
+library(glmnet)
+library(randomForest)
+library(ranger)
+library(lime)
+```
+
+W ninejszym dokumencie poraz kolejny przyjrzymy się danym ‘House Sales in King County’, tym razem wykorzystując metodę LIME. Ponownie pozwolę sobie pominąć opis czyszczenia danych i uczenia lasu losowego.
+
+```{r}
+house_data <- read.csv('kc_house_data.csv')
+```
+
+
+```{r, include=F}
+#usuwamy rekordy z 0 łazienek
+house_data <- house_data[house_data$bathrooms > 0,]
+
+#dodajemy kolumny
+house_data$sale_year <- as.numeric(unlist(lapply(house_data$date, substr, start=1, stop=4)))
+house_data$sale_days <- as.Date(unlist(lapply(house_data$date, substr, start=5, stop=8)),
+                               format = '%m%d') - as.Date('0101', format='%m%d')
+house_data$sale_days <- as.numeric(house_data$sale_days)
+
+#zachowujemy cykliczność dni
+house_data$day_x <- cos(house_data$sale_days*pi/365)
+house_data$day_y <- sin(house_data$sale_days*pi/365)
+
+house_data$age <- house_data$sale_year - house_data$yr_built
+
+house_data$renovation_age <- house_data$age
+house_data$renovation_age[house_data$yr_renovated > 0] <-
+  house_data$sale_year[house_data$yr_renovated > 0] - house_data$yr_renovated[house_data$yr_renovated > 0]
+
+house_data$sale_year <- as.factor(house_data$sale_year)
+```
+
+
+```{r}
+#wybieramy kolumny
+data <- subset(house_data, select = -c(id, date, yr_built, yr_renovated, sqft_living, sale_days))
+
+#dzielimy na zbiór treningowy (80%) i testowy (20%)
+indices <- sample(seq_len(nrow(data)), size = floor(nrow(data)*0.8))
+train_data <- data[indices,]
+test_data <- data[-indices,]
+```
+
+
+```{r, echo=T}
+#trenujemy las losowy z parametrami uzyskanymi w pierwszej pd
+rf <- ranger(
+    formula         = price ~ ., 
+    data            = train_data, 
+    num.trees       = 500,
+    mtry            = 12,
+    min.node.size   = 2,
+    sample.fraction = 0.632,
+    seed            = 13
+  )
+
+```
+
+### Pierwsza obserwacja
+
+Spójrzmy więc na jedną z obserwacji ze zbioru testowego.
+
+```{r}
+df = data.frame("Price"=test_data[2,1], "Prediction"=predict(rf, test_data[2,])$prediction)
+df
+```
+
+
+```{r, echo=T}
+explainer <- lime(train_data, rf, bin_continuous = TRUE, quantile_bins = FALSE)
+explanation <- lime::explain(test_data[2,], explainer, n_features=4)
+print(explanation)
+```
+
+```{r}
+plot_features(explanation, ncol = 1)
+```
+
+Choć predykcja modelu wygenerowanego przez LIME jest dość daleka od predykcji naszego modelu (i faktycznej wartości ceny), to jednak zdaje się dobrze wyjaśniać wpływy zmiennych na wartość mieszkania. Średnia oceny 'grade' wynosi 8, więc wpadanie w kategorię oceny między 5.5 a 8 w oczywisty sposób powinno wplywać negatywnie na wysokość przewidywanej ceny. Porównując też z analizą z poprzedniej pracy domowej w której użyto metody SHAP dla tej samej obserwacji, możemy zauważyć że pierwsze 4 najważniejsze zmienne również tu się pojawiły. Z tą różnicą, że negatywny wpływ zmiennych jest bardziej odczuwalny - zapewne jest to kwestia większego 'intercept' niż średnia użyta w metodzie SHAP.
+
+### Trochę przykładów
+
+Spójrzmy teraz na wykresy dla kilku kolejnych obserwacji.
+
+```{r, include=F}
+expl_obs2 <- lime::explain(test_data[3,], explainer, n_features=4)
+expl_obs3 <- lime::explain(test_data[4,], explainer, n_features=4)
+expl_obs4 <- lime::explain(test_data[5,], explainer, n_features=4)
+expl_obs5 <- lime::explain(test_data[6,], explainer, n_features=4)
+```
+```{r}
+plot_features(expl_obs2, ncol = 1)
+plot_features(expl_obs3, ncol = 1)
+```
+
+Dla tych dwóch obserwacji dobrane zostały te same zmienne z delikatną różnicą wag. Jednak predykcje naszego modelu dla tych obserwacji są z goła odmienne. Spójrzmy na predykcję liniowego modelu z LIME
+
+```{r, echo=T}
+print(expl_obs2$model_prediction[1])
+print(expl_obs3$model_prediction[1])
+```
+
+Są one mocno zbliżone, mimo znaczących różnic predykcji (oraz faktycznych wartości). Prawdopodobnie należałoby wziąć więcej zmiennych do wyjaśnienia faktycznych różnic dla tych dwóch przypadków.
+
+```{r, echo=T}
+plot_features(expl_obs4, ncol = 1)
+plot_features(expl_obs5, ncol = 1)
+```
+
+W kolejnych dwóch przykładach mamy sam negatywny wpływ kontra sam pozytywny. Pierwszy dom ma gorszą ocenę stanu, mniejszy metraż, gorsze położenie geograficzne jak i relatywnie nie duży metraż sąsiednich domów. Drugi zaś ma wszystko to samo, ale przeciwnie.
+
+```{r, echo=T}
+print(expl_obs4$model_prediction[1])
+print(expl_obs5$model_prediction[1])
+```
+
+Ponownie dobór małej ilości parametrów daje rozbieżne predykcje, choć możemy przyznać, że do samego porównania tych dwóch nieruchomości tak mała ilość wystarczyła.
+
+
+### Stabilność wyjaśnień
+
+Żeby zbadać stabilność przedstawionych wyjaśnień powtarzam je podając inne źródło dla generatora liczb losowych.
+
+```{r, include=F}
+set.seed(1)
+
+expl_obs2 <- lime::explain(test_data[3,], explainer, n_features=4)
+expl_obs3 <- lime::explain(test_data[4,], explainer, n_features=4)
+expl_obs4 <- lime::explain(test_data[5,], explainer, n_features=4)
+expl_obs5 <- lime::explain(test_data[6,], explainer, n_features=4)
+```
+
+```{r}
+plot_features(expl_obs2, ncol = 1)
+plot_features(expl_obs3, ncol = 1)
+plot_features(expl_obs4, ncol = 1)
+plot_features(expl_obs5, ncol = 1)
+```
+
+Wagi zmieniły swoje wartości, na tyle by w niektórych przypadkach zamienić kolejność sąsiadujących zmiennych. Nie są to jednak drastyczne zmiany, nie wskoczyły również żadne nowe zmienne, zatem można sądzić o dość dobrej stabilności tych wyjaśnień.
+
+### Dla modelu liniowego
+
+Na koniec przyjrzyjmy się jeszcze raz wyjaśnieniu pierwszej obserwacji, ale tym razem dla predykcji modelu liniowego z regularyzacją elastic net.
+
+```{r, echo=T}
+elnet <- train(
+  price ~., data = train_data, method = "glmnet",
+  trControl = trainControl("cv", number = 5),
+  tuneLength = 5
+)
+```
+
+
+```{r, echo=T}
+explain_elnet <- lime(train_data, elnet, bin_continuous = TRUE, quantile_bins = FALSE)
+explanation2 <- lime::explain(test_data[2,], explain_elnet, n_features=4)
+print(explanation2)
+plot_features(explanation2, ncol = 1)
+```
+
+Zmieniła się kolejność zmiennych jak i ich wagi. Doszedł wiek budynku zamiast metrażu mieszkań w sąsiedztwie. Co ciekawe, mamy dokładnie ten sam podział na kategorie co przy wyjaśnianiu lasu losowego.
