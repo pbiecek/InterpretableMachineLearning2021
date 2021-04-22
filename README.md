@@ -35,8 +35,8 @@ Plan for the summer semester 2020/2021. UoW classes are on Fridays. We will meet
 * 2021-03-26 -- LIME. [EMA chapter](https://pbiecek.github.io/ema/LIME.html), [paper lime](https://arxiv.org/abs/1602.04938)
 * 2021-03-31 -- Ceteris Paribus profiles / Partial Dependence profiles. [EMA chapter](https://pbiecek.github.io/ema/partialDependenceProfiles.html), [paper pdp/ale](https://cran.r-project.org/web/packages/ALEPlot/vignettes/AccumulatedLocalEffectPlot.pdf)
 * 2021-04-09 -- 14:00 [XAI stories: first version of the solution]
-* 2021-04-16 --  Interactive Explanatory Model Analysis - how instance level methods complement each other
-* 2021-04-23 -- Variable's importance. [EMA chapter](https://pbiecek.github.io/ema/featureImportance.html), [paper pvi](https://arxiv.org/abs/1801.01489)
+* 2021-04-16 -- Variable's importance. [EMA chapter](https://pbiecek.github.io/ema/featureImportance.html), [paper pvi](https://arxiv.org/abs/1801.01489)
+* 2021-04-23 -- Interactive Explanatory Model Analysis - how instance level methods complement each other
 * 2021-04-30 -- Fairness or Model diagnostic plots. [EMA chapter](https://pbiecek.github.io/ema/residualDiagnostic.html), [paper auditor](https://arxiv.org/abs/1809.07763)
 * 2021-05-14 -- 14:00 [XAI stories: second version of the solution] (!! USOS says 07)
 * 2021-05-21 -- students presentations
