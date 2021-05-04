@@ -38,7 +38,7 @@ Plan for the summer semester 2020/2021. UoW classes are on Fridays. We will meet
 * 2021-04-16 -- Variable's importance. [EMA chapter](https://pbiecek.github.io/ema/featureImportance.html), [paper pvi](https://arxiv.org/abs/1801.01489)
 * 2021-04-23 -- Interactive Explanatory Model Analysis - how instance level methods complement each other
 * 2021-04-30 -- Fairness or Model diagnostic plots. [EMA chapter](https://pbiecek.github.io/ema/residualDiagnostic.html), [paper auditor](https://arxiv.org/abs/1809.07763)
-* 2021-05-14 -- 14:00 [XAI stories: second version of the solution] (!! USOS says 07)
+* 2021-05-14 -- 14:00 [XAI stories: second version of the solution] 
 * 2021-05-21 -- students presentations
 * 2021-05-28 -- students presentations
 * 2021-06-04 -- 14:00 [XAI stories: final presentations] (!! USOS says 11)
