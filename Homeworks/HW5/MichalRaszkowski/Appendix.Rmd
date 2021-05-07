@@ -102,7 +102,7 @@ plot(vip.50) +
 
 Największe znaczenie ma zmienna *grade*, zaraz po niej dwie zmienne kodujące położenie, zaś dalej informacje o powierzchni mieszkalnej i średniej powierzchni w sąsiedztwie. Są to również zmienne które najczęściej występowały w przykładach przy używaniu metod SHAP czy LIME w zeszłych pracach domowych. 
 
-# Model ten sam, zmiennych mniej
+### Model ten sam, zmiennych mniej
 
 Zobaczmy czy próba zbudowania modelu z tymi samymi parametrami na 11 najważniejszych zmiennych zmieni ich kolejność.
 
