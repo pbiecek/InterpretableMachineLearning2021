@@ -21,7 +21,7 @@ library(ggplot2)
 library(gridExtra)
 ```
 
-W ninejszym dokumencie zajmimey się analizą modeli za pomocą profili ceteris-paribus. Tak jak w poprzednich raportach, przyjrzymy się dwóm modelom - lasowi losowemu oraz regresji liniowej z regularyzacją elastic net, wytrenowanych na danych ‘House Sales in King County’.
+W ninejszym dokumencie zajmiemy się analizą modeli za pomocą profili ceteris-paribus. Tak jak w poprzednich raportach, przyjrzymy się dwóm modelom - lasowi losowemu oraz regresji liniowej z regularyzacją elastic net, wytrenowanych na danych ‘House Sales in King County’.
 
 ```{r}
 house_data <- read.csv('kc_house_data.csv')
