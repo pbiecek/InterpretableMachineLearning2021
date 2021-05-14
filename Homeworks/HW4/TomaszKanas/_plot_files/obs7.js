@@ -1,0 +1,30 @@
+observation = [
+  {
+    "cap-shape": 5,
+    "cap-surface": 3,
+    "cap-color": 9,
+    "bruises%3F": 1,
+    "odor": 3,
+    "gill-attachment": 1,
+    "gill-spacing": 0,
+    "gill-size": 0,
+    "gill-color": 5,
+    "stalk-shape": 0,
+    "stalk-root": 2,
+    "stalk-surface-above-ring": 2,
+    "stalk-surface-below-ring": 2,
+    "stalk-color-above-ring": 7,
+    "stalk-color-below-ring": 7,
+    "veil-type": 0,
+    "veil-color": 2,
+    "ring-number": 1,
+    "ring-type": 4,
+    "spore-print-color": 3,
+    "population": 2,
+    "habitat": 3,
+    "_yhat_": 0.0,
+    "_label_": "Random Forest",
+    "_ids_": 0,
+    "_y_": 0
+  }
+];
