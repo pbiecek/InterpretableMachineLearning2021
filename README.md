@@ -35,10 +35,10 @@ Plan for the summer semester 2020/2021. UoW classes are on Fridays. We will meet
 * 2021-03-26 -- LIME. [EMA chapter](https://pbiecek.github.io/ema/LIME.html), [paper lime](https://arxiv.org/abs/1602.04938)
 * 2021-03-31 -- Ceteris Paribus profiles / Partial Dependence profiles. [EMA chapter](https://pbiecek.github.io/ema/partialDependenceProfiles.html), [paper pdp/ale](https://cran.r-project.org/web/packages/ALEPlot/vignettes/AccumulatedLocalEffectPlot.pdf)
 * 2021-04-09 -- 14:00 [XAI stories: first version of the solution]
-* 2021-04-16 --  Interactive Explanatory Model Analysis - how instance level methods complement each other
-* 2021-04-23 -- Variable's importance. [EMA chapter](https://pbiecek.github.io/ema/featureImportance.html), [paper pvi](https://arxiv.org/abs/1801.01489)
+* 2021-04-16 -- Variable's importance. [EMA chapter](https://pbiecek.github.io/ema/featureImportance.html), [paper pvi](https://arxiv.org/abs/1801.01489)
+* 2021-04-23 -- Interactive Explanatory Model Analysis - how instance level methods complement each other
 * 2021-04-30 -- Fairness or Model diagnostic plots. [EMA chapter](https://pbiecek.github.io/ema/residualDiagnostic.html), [paper auditor](https://arxiv.org/abs/1809.07763)
-* 2021-05-14 -- 14:00 [XAI stories: second version of the solution] (!! USOS says 07)
+* 2021-05-14 -- 14:00 [XAI stories: second version of the solution] 
 * 2021-05-21 -- students presentations
 * 2021-05-28 -- students presentations
 * 2021-06-04 -- 14:00 [XAI stories: final presentations] (!! USOS says 11)
@@ -60,11 +60,11 @@ Presentation of a selected XAI related article [0-10 points]
 
 Home works [0-30 points]
  - home work 1 for 0-5 points: Train a predictive model for selected ML problem (see issues). Submit knitr/notebook script to GitHub (directory Homeworks/H1/FirstnameLastname). **Deadline: 2020-03-11 EOD**
- - [home work 2]  for 0-5 points. **Deadline: TBP**
- - [home work 3]  for 0-5 points. **Deadline: TBP**
- - [home work 4]  for 0-5 points. **Deadline: TBP**
- - [home work 5]  for 0-5 points. **Deadline: TBP**
- - [home work 6]  for 0-5 points. **Deadline: TBP**
+ - [home work 2]  for 0-5 points. **Deadline: 2021-03-26 EOD**
+ - [home work 3]  for 0-5 points. **Deadline: 2020-04-09 EOD**
+ - [home work 4]  for 0-5 points. **Deadline: 2020-04-16 EOD**
+ - [home work 5]  for 0-5 points. **Deadline: 2020-05-07 EOD**
+ - [home work 6]  for 0-5 points. **Deadline: 2020-05-21 EOD**
 
 
 # Presentations

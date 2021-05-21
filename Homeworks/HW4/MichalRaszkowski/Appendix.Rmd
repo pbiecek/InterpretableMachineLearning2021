@@ -1,0 +1,163 @@
+---
+title: "iml_hw4"
+author: "Michal_Raszkowski"
+date: "15 04 2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+set.seed(13)
+```
+
+```{r, include=F}
+library(caret)
+library(glmnet)
+library(randomForest)
+library(ranger)
+library(DALEX)
+library(ggplot2)
+library(gridExtra)
+```
+
+W ninejszym dokumencie zajmiemy się analizą modeli za pomocą profili ceteris-paribus. Tak jak w poprzednich raportach, przyjrzymy się dwóm modelom - lasowi losowemu oraz regresji liniowej z regularyzacją elastic net, wytrenowanych na danych ‘House Sales in King County’.
+
+```{r}
+house_data <- read.csv('kc_house_data.csv')
+```
+
+
+```{r, include=F}
+#usuwamy rekordy z 0 łazienek
+house_data <- house_data[house_data$bathrooms > 0,]
+
+#dodajemy kolumny
+house_data$sale_year <- as.numeric(unlist(lapply(house_data$date, substr, start=1, stop=4)))
+house_data$sale_days <- as.Date(unlist(lapply(house_data$date, substr, start=5, stop=8)),
+                               format = '%m%d') - as.Date('0101', format='%m%d')
+house_data$sale_days <- as.numeric(house_data$sale_days)
+
+#zachowujemy cykliczność dni
+house_data$day_x <- cos(house_data$sale_days*pi/365)
+house_data$day_y <- sin(house_data$sale_days*pi/365)
+
+house_data$age <- house_data$sale_year - house_data$yr_built
+
+house_data$renovation_age <- house_data$age
+house_data$renovation_age[house_data$yr_renovated > 0] <-
+  house_data$sale_year[house_data$yr_renovated > 0] - house_data$yr_renovated[house_data$yr_renovated > 0]
+
+house_data$sale_year <- as.factor(house_data$sale_year)
+```
+
+
+```{r}
+#wybieramy kolumny
+data <- subset(house_data, select = -c(id, date, yr_built, yr_renovated, sqft_living, sale_days))
+
+#dzielimy na zbiór treningowy (80%) i testowy (20%)
+indices <- sample(seq_len(nrow(data)), size = floor(nrow(data)*0.8))
+train_data <- data[indices,]
+test_data <- data[-indices,]
+```
+
+
+```{r}
+#trenujemy las losowy z parametrami uzyskanymi w pierwszej pd
+rf <- ranger(
+    formula         = price ~ ., 
+    data            = train_data, 
+    num.trees       = 500,
+    mtry            = 12,
+    min.node.size   = 2,
+    sample.fraction = 0.632,
+    seed            = 13
+  )
+
+```
+
+
+
+
+```{r, include=F}
+explain_ranger <- DALEX::explain(model = rf,  
+                        data = subset(train_data, select=-price),
+                           y = train_data$price, 
+                       label = "Random Forest")
+
+```
+
+### Pierwszy przykład
+
+Zobaczmy najpierw profile zmiennych 'grade' oraz 'sqft_above' dla jednej z obserwacji ze zbioru testowego.
+
+```{r}
+explain_obs1_rf <- predict_profile(explainer = explain_ranger, 
+                           new_observation = test_data[2,])
+
+temp <- paste('Predicted value: ', predict(rf, test_data[2,])$prediction)
+
+plot(explain_obs1_rf, variables = c("grade", "sqft_above")) +
+  ggtitle("Ceteris-paribus profile", "") + labs(caption = temp)
+
+```
+
+Dla powyższego przykładu ocena 'grade' zgodnie z intuicją ma skokowy wpływ na zmianę wartości nieruchomości. Co ciekawe, o ile wysokie noty wpływają mocno na wzrost ceny, to wartości poniżej średniej nie obniżają jej znacząco.
+Interesujące jest zachowanie na wykresie dla zmiennej 'sqft_above'. Sugeruje ono (w tym przypadku) logarytmiczną zależność ceny od powierzchni mieszkania, co można by wykorzystać do implementacji prostrzych modeli (np. regresji liniowej).
+
+
+### Ta sama zmienna, inny wpływ
+
+Przyjrzyjmy się teraz wykresom zmiennej oznaczającej wiek budynku dla dwóch obserwacji.
+
+```{r}
+explain_obs2_rf <- predict_profile(explainer = explain_ranger, 
+                           new_observation = test_data['5717',])
+explain_obs3_rf <- predict_profile(explainer = explain_ranger, 
+                           new_observation = test_data['1685',])
+
+grid.arrange(
+  plot(explain_obs2_rf, variables = "age"),
+  plot(explain_obs3_rf, variables = "age"),
+  ncol=2
+) 
+```
+
+Zauważmy wpierw że dobrane obserwacje różnią się znacząco ceną. W pierwszym, droższym przykładzie mamy doczynienia z początku sensownym spadkiem ceny wraz z wiekiem budynku, jednak trend ten odwraca się i stabilizuje dla przedziału 80-120 lat. W drugim, tańszym, mamy wyraźny wzrost ceny wraz z wiekiem, co może sugerować o małej atrakcyjności nowowybudowanych nieruchomości w tym przedziale cenowym (i pozostałych parametrach) lub też atrakcyjności starszego budownictwa (być może zabytkowego). Zwróćmy uwagę, że fluktuacje dla pierwszej nieruchomości mogą wynikać z małej ilości podobnych danych oraz overfittingu modelu.
+
+
+### Pierwszy przykład w modelu liniowym
+
+Na koniec zobaczmy różnicę między modelem lasu losowego a liniowym dla zmiennej 'age' na naszym pierwszym przykładzie.
+
+```{r, include=F}
+elnet <- train(
+  price ~., data = train_data, method = "glmnet",
+  trControl = trainControl("cv", number = 5),
+  tuneLength = 5
+)
+
+explain_elnet <- DALEX::explain(model = elnet,  
+                        data = subset(train_data, select=-price),
+                           y = train_data$price, 
+                       label = "Elastic net")
+```
+
+```{r}
+explain_obs1_lm <- predict_profile(explainer = explain_elnet, 
+                           new_observation = test_data[2,])
+
+
+oldw <- getOption("warn")
+options(warn = -1)
+
+plot(explain_obs1_rf, explain_obs1_lm, color = "_label_",  
+     variables = c("age")) +
+     ggtitle("Ceteris-paribus profiles for first house", "") + ylim(4e+05, 5e+05)
+
+options(warn = oldw)
+```
+
+
+Z oczywistych względów otrzymujemy liniowy wykres dla modelu liniowego. Widać że przystosował się on do ogólnego trendu "im starsze, tym droższe", co prawdpodobnie jest zbyt dużym uogólnieniem. Z drugiej strony las losowy dopasował się dokładniej do obserwacji o podobnych parametrach, przewidując niewielkie fluktuacje w cenie i o zdecydowanie nieliniowej zależności. Patrząc jednak na poprzednie przykłady jest to zapewne zbytnie uszczegółowienie - warto by zastosować model o mniejszej elastyczności niż nasz las losowy, ale oczywiście większej niż zwykła regresja liniowa z regularyzacją.

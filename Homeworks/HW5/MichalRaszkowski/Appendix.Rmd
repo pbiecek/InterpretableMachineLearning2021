@@ -1,0 +1,213 @@
+---
+title: "iml_hw5"
+author: "Michal_Raszkowski"
+date: "7 05 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+set.seed(13)
+```
+
+```{r, include=F}
+library(caret)
+library(glmnet)
+library(randomForest)
+library(ranger)
+library(DALEX)
+library(ggplot2)
+library(gridExtra)
+```
+
+W ninejszym dokumencie przyjrzymy się ważności zmiennych w modelach trenowanych na danych ‘House Sales in King County’. Tak jak w poprzednich raportach, zbadamy dwa modele - las losowy oraz regresję liniową z regularyzacją elastic net.
+
+```{r}
+house_data <- read.csv('kc_house_data.csv')
+```
+
+
+```{r, include=F}
+#usuwamy rekordy z 0 łazienek
+house_data <- house_data[house_data$bathrooms > 0,]
+
+#dodajemy kolumny
+house_data$sale_year <- as.numeric(unlist(lapply(house_data$date, substr, start=1, stop=4)))
+house_data$sale_days <- as.Date(unlist(lapply(house_data$date, substr, start=5, stop=8)),
+                               format = '%m%d') - as.Date('0101', format='%m%d')
+house_data$sale_days <- as.numeric(house_data$sale_days)
+
+#zachowujemy cykliczność dni
+house_data$day_x <- cos(house_data$sale_days*pi/365)
+house_data$day_y <- sin(house_data$sale_days*pi/365)
+
+house_data$age <- house_data$sale_year - house_data$yr_built
+
+house_data$renovation_age <- house_data$age
+house_data$renovation_age[house_data$yr_renovated > 0] <-
+  house_data$sale_year[house_data$yr_renovated > 0] - house_data$yr_renovated[house_data$yr_renovated > 0]
+
+house_data$sale_year <- as.factor(house_data$sale_year)
+```
+
+
+```{r}
+#wybieramy kolumny
+data <- subset(house_data, select = -c(id, date, yr_built, yr_renovated, sqft_living, sale_days))
+
+#dzielimy na zbiór treningowy (80%) i testowy (20%)
+indices <- sample(seq_len(nrow(data)), size = floor(nrow(data)*0.8))
+train_data <- data[indices,]
+test_data <- data[-indices,]
+```
+
+
+```{r}
+#trenujemy las losowy z parametrami uzyskanymi w pierwszej pd
+rf <- ranger(
+    formula         = price ~ ., 
+    data            = train_data, 
+    num.trees       = 500,
+    mtry            = 12,
+    min.node.size   = 2,
+    sample.fraction = 0.632,
+    seed            = 13
+  )
+
+```
+
+
+### Najpierw w lesie
+
+Zacznijmy wpierw od modelu lasu losowego. Wariancję zmiennych będziemy sprawdzać pod kątem zmiany pierwiastka błędu średniokwadratowego.
+
+```{r, include=F}
+explain_ranger <- DALEX::explain(model = rf,  
+                        data = subset(train_data, select=-price),
+                           y = train_data$price, 
+                       label = "Random Forest")
+
+```
+
+
+```{r}
+vip.50 <- model_parts(explainer = explain_ranger, 
+                   loss_function = loss_root_mean_square,
+                               B = 50,
+                            type = "difference")
+
+plot(vip.50) +
+  ggtitle("Mean variable-importance over 50 permutations", "") 
+```
+
+Największe znaczenie ma zmienna *grade*, zaraz po niej dwie zmienne kodujące położenie, zaś dalej informacje o powierzchni mieszkalnej i średniej powierzchni w sąsiedztwie. Są to również zmienne które najczęściej występowały w przykładach przy używaniu metod SHAP czy LIME w zeszłych pracach domowych. 
+
+### Model ten sam, zmiennych mniej
+
+Zobaczmy czy próba zbudowania modelu z tymi samymi parametrami na 11 najważniejszych zmiennych zmieni ich kolejność.
+
+```{r, include=F}
+#ręcznie bo wrzucenie listy z vip.50[12:21,1] wypluwało inne zmienne niż znajdujące się w liście...
+train_data2 <- train_data[c('price', 'grade', 'lat', 'long', 'sqft_above', 'sqft_living15', 'age', 'bathrooms', 'waterfront', 'sqft_basement', 'view')]
+
+
+rf2 <- ranger(
+    formula         = price ~ ., 
+    data            = train_data2, 
+    num.trees       = 500,
+    min.node.size   = 2,
+    sample.fraction = 0.632,
+    seed            = 13
+  )
+
+
+explain_ranger2 <- DALEX::explain(model = rf2,  
+                        data = subset(train_data2, select=-price),
+                           y = train_data2$price, 
+                       label = "Random Forest")
+```
+
+```{r}
+vip.rf2 <- model_parts(explainer = explain_ranger2, 
+                   loss_function = loss_root_mean_square,
+                               B = 50,
+                            type = "difference")
+
+plot(vip.rf2) +
+  ggtitle("Mean variable-importance over 50 permutations", "") 
+```
+
+Okazuje się że tak - model teraz zdecydowanie bardziej uwzględnia długość geograficzną niż szerokość, co występowało w przykładach z poprzedniego modelu. Spadła również ważność widoku na akwen wodny - prawdopodobnie z powodu korelacji z ogólnym widokiem.
+
+
+### Położenie geograficzne a kod pocztowy
+
+Skoro nasze modele przywiązywały dużą wagę do położenia geograficznego, to zobaczmy czy zabranie zmiennych *lat* i *long* spowoduje wzrost znaczenia zmiennej *zipcode*.
+
+
+```{r, include=F}
+rf3 <- ranger(
+    formula         = price ~ ., 
+    data            = subset(train_data, select = -c(lat, long)), 
+    num.trees       = 500,
+    mtry            = 12,
+    min.node.size   = 2,
+    sample.fraction = 0.632,
+    seed            = 13
+  )
+
+explain_ranger3 <- DALEX::explain(model = rf3,  
+                        data = subset(train_data, select=-c(lat, long, price)),
+                           y = train_data$price, 
+                       label = "Random Forest")
+
+```
+
+```{r}
+vip.rf3 <- model_parts(explainer = explain_ranger3, 
+                   loss_function = loss_root_mean_square,
+                               B = 50,
+                            type = "difference")
+
+plot(vip.rf3) +
+  ggtitle("Mean variable-importance over 50 permutations", "") 
+```
+
+Jak widać powyżej, kod pocztowy odgrywa teraz dużo większą rolę, ale nie w tym samym stopniu co współrzędne geograficzne w pierwszej wersji. Można też zauważyć, że wzrosło znaczenie zmiennej oznaczającej średnią powierzchnię mieszkaniową w sąsiedztwie - zapewne model w ten sposób wykrywa zależności które mógł wcześniej wyczytywać bezpośrednio z położenia geograficznego. Sugeruje to, że zmienne geograficzne lepiej oddają wpływ polożenia na cenę nieruchomości niż kod pocztowy.
+
+
+### Porównanie z liniowym
+
+Na koniec przyjrzyjmy się jeszcze ważności zmiennych w modelu liniowym.
+
+
+```{r, include=F}
+elnet <- train(
+  price ~., data = train_data, method = "glmnet",
+  trControl = trainControl("cv", number = 5),
+  tuneLength = 5
+)
+
+explain_elnet <- DALEX::explain(model = elnet,  
+                        data = subset(train_data, select=-price),
+                           y = train_data$price, 
+                       label = "Elastic net")
+```
+
+
+
+```{r}
+vip.elnet <- model_parts(explainer = explain_elnet, 
+                   loss_function = loss_root_mean_square,
+                               B = 50,
+                            type = "difference")
+
+plot(vip.elnet) +
+  ggtitle("Mean variable-importance over 50 permutations", "") 
+```
+
+O ile układ zmiennych jest nieco inny, to jednak podobny do poprzednich modeli. Na prowadzenie wybiła się powierchnia mieszkania, prawdopodobnie lepiej oddająca liniową zależność niż skwantyfikowana zmienna *grade*. W opisie geograficznym wybiła się długość geograficzna, podobnie jak we wcześniej przedstawionym modelu lasu losowego z ważniejszymi zmiennymi. Duże podobieństwo listy najważniejszych zmiennych do poprzednich modeli sugeruje, że modele te ogólnie dobrze dobrały ważność zmiennych.
+
+
+
+
