@@ -6,6 +6,8 @@ Slack for this course: http://iml2021workspace.slack.com
 
 XAI stories ebook (last year): https://github.com/pbiecek/xai_stories
 
+eBook: https://github.com/pbiecek/xai_stories_2
+
 # Introduction
 
 The course consists of lectures, computer labs and a project.
