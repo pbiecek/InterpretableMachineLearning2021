@@ -1,0 +1,30 @@
+observation = [
+  {
+    "cap-shape": 2,
+    "cap-surface": 2,
+    "cap-color": 3,
+    "bruises%3F": 0,
+    "odor": 5,
+    "gill-attachment": 1,
+    "gill-spacing": 1,
+    "gill-size": 0,
+    "gill-color": 4,
+    "stalk-shape": 1,
+    "stalk-root": 3,
+    "stalk-surface-above-ring": 2,
+    "stalk-surface-below-ring": 2,
+    "stalk-color-above-ring": 7,
+    "stalk-color-below-ring": 7,
+    "veil-type": 0,
+    "veil-color": 2,
+    "ring-number": 1,
+    "ring-type": 0,
+    "spore-print-color": 3,
+    "population": 0,
+    "habitat": 1,
+    "_yhat_": 7.154045843452603e-05,
+    "_label_": "Logistic Regression",
+    "_ids_": 0,
+    "_y_": 0
+  }
+];

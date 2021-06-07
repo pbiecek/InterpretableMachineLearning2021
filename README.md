@@ -6,6 +6,8 @@ Slack for this course: http://iml2021workspace.slack.com
 
 XAI stories ebook (last year): https://github.com/pbiecek/xai_stories
 
+eBook: https://github.com/pbiecek/xai_stories_2
+
 # Introduction
 
 The course consists of lectures, computer labs and a project.
@@ -60,11 +62,11 @@ Presentation of a selected XAI related article [0-10 points]
 
 Home works [0-30 points]
  - home work 1 for 0-5 points: Train a predictive model for selected ML problem (see issues). Submit knitr/notebook script to GitHub (directory Homeworks/H1/FirstnameLastname). **Deadline: 2020-03-11 EOD**
- - [home work 2]  for 0-5 points. **Deadline: TBP**
- - [home work 3]  for 0-5 points. **Deadline: TBP**
- - [home work 4]  for 0-5 points. **Deadline: TBP**
- - [home work 5]  for 0-5 points. **Deadline: TBP**
- - [home work 6]  for 0-5 points. **Deadline: TBP**
+ - [home work 2]  for 0-5 points. **Deadline: 2021-03-26 EOD**
+ - [home work 3]  for 0-5 points. **Deadline: 2020-04-09 EOD**
+ - [home work 4]  for 0-5 points. **Deadline: 2020-04-16 EOD**
+ - [home work 5]  for 0-5 points. **Deadline: 2020-05-07 EOD**
+ - [home work 6]  for 0-5 points. **Deadline: 2020-05-21 EOD**
 
 
 # Presentations
