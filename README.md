@@ -48,6 +48,16 @@ Plan for the summer semester 2020/2021. UoW classes are on Fridays. We will meet
 # How to get a good grade
 
 From different activities, you can get from 0 to 100 points. 51 points are needed to pass this course.
+
+Grades:
+
+* 51-60: dst
+* 61-70: dst+
+* 71-80: db
+* 81-90: db+
+* 91-100: bdb
+
+
 There are three key components.
 
 Chapter in the 'XAI stories' [0-60 points]
